@@ -128,4 +128,120 @@
 </div>
 
 <script>
-    const GOOGLE_SHEET_
+    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQE8qU7MUo8mltMrnQSLttK1ePGuN2ooTaD3QBtoKsmvrW5tEKOjSXwGm9bwhZtgy2veLF-QLTpe33q/pub?output=csv";
+    let playersData = [], locations = [];
+    // 🌟 更新守備位置清單，加入紀錄代碼 🌟
+    const posList = ["P(1)", "C(2)", "1B(3)", "2B(4)", "3B(5)", "SS(6)", "LF(7)", "CF(8)", "RF(9)", "DH"];
+
+    async function fetchRoster() {
+        Papa.parse(GOOGLE_SHEET_URL, { download: true, header: false, complete: function(results) {
+            const data = results.data.slice(1);
+            playersData = data.map(row => ({ num: String(row[0]||""), name: String(row[1]||"") })).filter(p => p.name !== "");
+            locations = Array.from(new Set(data.map(row => String(row[2]||"").trim()))).filter(loc => loc !== "");
+            updateAllDropdowns();
+            refreshLocationDropdown();
+        }});
+    }
+
+    function refreshLocationDropdown() {
+        document.getElementById('game-location').innerHTML = '<option value="">-- 選擇球場 --</option>' + locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+    }
+
+    function updateAllDropdowns() {
+        const allPlayerSelects = document.querySelectorAll('.player-select');
+        const allPosSelects = document.querySelectorAll('.pos-select');
+
+        const selectedPlayers = Array.from(allPlayerSelects).map(s => s.value).filter(v => v !== "");
+        // 排除 P(1) 的過濾邏輯，因為 P 通常與打線分開處理，但也保留過濾其餘位置
+        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P(1)" && v !== "Bench");
+
+        allPlayerSelects.forEach(select => {
+            const currentVal = select.value;
+            let options = `<option value="">-- 球員 --</option>`;
+            playersData.forEach(p => {
+                if (p.name === currentVal || !selectedPlayers.includes(p.name)) {
+                    options += `<option value="${p.name}" ${p.name === currentVal ? 'selected' : ''}>${p.name}</option>`;
+                }
+            });
+            select.innerHTML = options;
+        });
+
+        allPosSelects.forEach(select => {
+            if (select.classList.contains('pitcher') || select.classList.contains('reserve')) return;
+            const currentVal = select.value;
+            let options = `<option value="">-- 守位 --</option>`;
+            // 排除 P(1) 以防重複選取（先發打線通常不含 P(1) 除非是 DH 制或投打併列）
+            posList.filter(p => p !== 'P(1)').forEach(pos => {
+                if (pos === currentVal || !selectedPositions.includes(pos)) {
+                    options += `<option value="${pos}" ${pos === currentVal ? 'selected' : ''}>${pos}</option>`;
+                }
+            });
+            select.innerHTML = options;
+        });
+        validate();
+    }
+
+    function createRow(labelText, type, container) {
+        const row = document.createElement('div'); 
+        row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
+        row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
+        
+        const pSelect = row.querySelector('.player-select'), badge = row.querySelector('.jersey-badge'), posSelect = row.querySelector('.pos-select');
+
+        if (type === 'pitcher') { 
+            posSelect.innerHTML = '<option value="P(1)">P(1)</option>'; 
+            posSelect.disabled = true; 
+        } 
+        else if (type === 'reserve') { 
+            row.removeChild(posSelect); 
+        }
+
+        pSelect.onchange = () => {
+            const p = playersData.find(x => x.name === pSelect.value);
+            if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
+            else { badge.style.opacity = 0; }
+            updateAllDropdowns();
+        };
+        if (type !== 'reserve') { posSelect.onchange = updateAllDropdowns; }
+        
+        container.appendChild(row);
+    }
+
+    function validate() {
+        const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
+        const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
+        const allSet = Array.from(allP).slice(0, 10).every(s => s.value) && missingPos.length === 0;
+
+        if (!allSet) {
+            status.textContent = "⌛ 請選滿先發 10 人，缺: " + (missingPos.join(", "));
+            status.className = "status-message status-warning"; btnGroup.style.display = "none";
+        } else {
+            status.textContent = "✅ 攻守名單排定完成！";
+            status.className = "status-message status-success"; btnGroup.style.display = "flex";
+        }
+    }
+
+    async function handleShare() {
+        const status = document.getElementById('status-box'); status.style.display = 'none';
+        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true });
+        status.style.display = 'block';
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], 'lineup.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
+            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
+        });
+    }
+
+    function init() {
+        document.getElementById('game-date').value = new Date().toISOString().split('T')[0];
+        for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', document.getElementById('starters-board'));
+        createRow('P', 'pitcher', document.getElementById('starters-board'));
+        for (let i = 1; i <= 8; i++) createRow('預', 'reserve', document.getElementById('reserves-board'));
+        fetchRoster();
+    }
+    document.getElementById('export-btn').onclick = handleShare;
+    document.getElementById('share-line-btn').onclick = handleShare;
+    init();
+</script>
+</body>
+</html>
