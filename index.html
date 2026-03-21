@@ -89,4 +89,171 @@
 
 <div id="capture-area">
     <div class="header-container">
-        <div id="team
+        <div id="team-logo-display">
+            <img src="https://lh3.googleusercontent.com/d/1aooCsOuMMtwMhT5bay4kDQCAq9sbm3kW" alt="LOGO" crossorigin="anonymous">
+        </div>
+        <h1>🔥 攻 守 名 單 🔥</h1>
+    </div>
+    
+    <div class="game-info-container">
+        <div class="info-row">
+            <div class="info-item"><label>📅 比賽日期</label><input type="date" id="game-date"></div>
+            <div class="info-item"><label>⏰ 集合時間</label><input type="time" id="meet-time" value="08:00"></div>
+            <div class="info-item"><label>⚾ 比賽時間</label><input type="time" id="game-time" value="09:00"></div>
+        </div>
+        <div class="info-row">
+            <div class="info-item">
+                <label>🏟️ 比賽地點</label>
+                <select id="game-location"><option value="">-- 同步中 --</option></select>
+            </div>
+            <div class="info-item">
+                <label>🚩 休息區</label>
+                <select id="bench-side">
+                    <option value="">-- 二選一 --</option>
+                    <option value="一壘側">一壘側</option>
+                    <option value="三壘側">三壘側</option>
+                </select>
+            </div>
+            <div class="info-item"><label>🆚 對戰球隊</label><input type="text" id="opponent-team" placeholder="輸入對手"></div>
+        </div>
+    </div>
+    
+    <div class="boards-wrapper">
+        <div class="column">
+            <div class="section-title">⚾ 先發名單</div>
+            <div id="starters-board" class="column"></div>
+        </div>
+        <div class="column reserve-col">
+            <div class="section-title" style="color:#ddd">🛡️ 預備球員</div>
+            <div id="reserves-board" class="column"></div>
+        </div>
+    </div>
+    <div id="status-box" class="status-message"></div>
+</div>
+
+<div class="button-group" id="action-buttons" style="display: none;">
+    <button id="export-btn">📸 下載圖片</button>
+    <button id="share-line-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="LINE"> 🟢 截圖分享</button>
+</div>
+
+<script>
+    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQE8qU7MUo8mltMrnQSLttK1ePGuN2ooTaD3QBtoKsmvrW5tEKOjSXwGm9bwhZtgy2veLF-QLTpe33q/pub?output=csv";
+    let playersData = [], locations = [];
+    const posList = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"];
+
+    async function fetchRoster() {
+        Papa.parse(GOOGLE_SHEET_URL, { download: true, header: false, complete: function(results) {
+            const data = results.data.slice(1);
+            playersData = data.map(row => ({ num: String(row[0]||""), name: String(row[1]||"") })).filter(p => p.name !== "");
+            locations = Array.from(new Set(data.map(row => String(row[2]||"").trim()))).filter(loc => loc !== "");
+            updateAllDropdowns();
+            refreshLocationDropdown();
+        }});
+    }
+
+    function refreshLocationDropdown() {
+        document.getElementById('game-location').innerHTML = '<option value="">-- 選擇球場 --</option>' + locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+    }
+
+    function updateAllDropdowns() {
+        const allPlayerSelects = document.querySelectorAll('.player-select');
+        const allPosSelects = document.querySelectorAll('.pos-select');
+
+        const selectedPlayers = Array.from(allPlayerSelects).map(s => s.value).filter(v => v !== "");
+        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P" && v !== "Bench");
+
+        allPlayerSelects.forEach(select => {
+            const currentVal = select.value;
+            let options = `<option value="">-- 球員 --</option>`;
+            playersData.forEach(p => {
+                if (p.name === currentVal || !selectedPlayers.includes(p.name)) {
+                    options += `<option value="${p.name}" ${p.name === currentVal ? 'selected' : ''}>${p.name}</option>`;
+                }
+            });
+            select.innerHTML = options;
+        });
+
+        allPosSelects.forEach(select => {
+            if (select.classList.contains('pitcher') || select.classList.contains('reserve')) return;
+            const currentVal = select.value;
+            let options = `<option value="">-- 守位 --</option>`;
+            posList.filter(p => p !== 'P').forEach(pos => {
+                if (pos === currentVal || !selectedPositions.includes(pos)) {
+                    options += `<option value="${pos}" ${pos === currentVal ? 'selected' : ''}>${pos}</option>`;
+                }
+            });
+            select.innerHTML = options;
+        });
+        validate();
+    }
+
+    function createRow(labelText, type, container) {
+        const row = document.createElement('div'); 
+        // 🌟 設定不同的 class 🌟
+        row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
+        row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
+        
+        const pSelect = row.querySelector('.player-select'), badge = row.querySelector('.jersey-badge'), posSelect = row.querySelector('.pos-select');
+
+        if (type === 'pitcher') { 
+            posSelect.innerHTML = '<option value="P">P</option>'; 
+            posSelect.disabled = true; 
+        } 
+        else if (type === 'reserve') { 
+            // 🌟 核心修復：徹底刪除守位選單的 DOM 節點 🌟
+            row.removeChild(posSelect); 
+        }
+
+        pSelect.onchange = () => {
+            const p = playersData.find(x => x.name === pSelect.value);
+            if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
+            else { badge.style.opacity = 0; }
+            updateAllDropdowns();
+        };
+        // 只有先發行有守位選單需要綁定 event
+        if (type !== 'reserve') { posSelect.onchange = updateAllDropdowns; }
+        
+        container.appendChild(row);
+    }
+
+    function validate() {
+        const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
+        const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
+        const allSet = Array.from(allP).slice(0, 10).every(s => s.value) && missingPos.length === 0;
+
+        if (!allSet) {
+            status.textContent = "⌛ 請選滿先發 10 人，缺: " + (missingPos.join(", "));
+            status.className = "status-message status-warning"; btnGroup.style.display = "none";
+        } else {
+            status.textContent = "✅ 攻守名單排定完成！";
+            status.className = "status-message status-success"; btnGroup.style.display = "flex";
+        }
+    }
+
+    async function handleShare() {
+        const status = document.getElementById('status-box'); status.style.display = 'none';
+        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true });
+        status.style.display = 'block';
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], 'lineup.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
+            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
+        });
+    }
+
+    function init() {
+        document.getElementById('game-date').value = new Date().toISOString().split('T')[0];
+        // 左邊 1-9 棒
+        for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', document.getElementById('starters-board'));
+        // 左邊 投手 P
+        createRow('P', 'pitcher', document.getElementById('starters-board'));
+        // 右邊 8 位預備球員
+        for (let i = 1; i <= 8; i++) createRow('預', 'reserve', document.getElementById('reserves-board'));
+        fetchRoster();
+    }
+    document.getElementById('export-btn').onclick = handleShare;
+    document.getElementById('share-line-btn').onclick = handleShare;
+    init();
+</script>
+</body>
+</html>
