@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 背景全透大字版</title>
+    <title>棒球攻守名單 - 右側縮減緊湊版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -19,7 +19,6 @@
             width: 100%; max-width: 1000px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); 
             border-top: 6px solid var(--primary-color); box-sizing: border-box; position: relative;
             background-color: #111;
-            /* 🌟 背景圖連結 🌟 */
             background-image: url('https://lh3.googleusercontent.com/d/1GDCzxfienpG_wIKKEcRLIdwmBmtt0wS-'); 
             background-size: cover; background-position: center; background-repeat: no-repeat;
             margin-bottom: 20px;
@@ -34,26 +33,37 @@
         .info-row { display: flex; gap: 8px; flex-wrap: wrap; }
         .info-item { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
         .info-item label { font-size: 22px; font-weight: bold; color: var(--secondary-color); }
-        .info-item input, .info-item select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); outline: none; background: #fff; font-weight: bold; }
+        .info-item input, .info-item select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); outline: none; background: #fff; font-weight: bold; color: #000; }
         
         .boards-wrapper { display: flex; gap: 10px; align-items: flex-start; width: 100%; }
         .column { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        
+        /* 🌟 右邊預備球員欄位，寬度自動縮減 🌟 */
+        .column.reserve-col { flex: 0 1 auto; min-width: 320px; }
+
         .section-title { text-align: center; color: #fff; margin: 0 0 5px 0; border-bottom: 3px solid var(--accent-color); padding-bottom: 5px; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        .lineup-row { display: flex; gap: 6px; align-items: center; padding: 5px; background: rgba(255, 255, 255, 0.98); border: 1px solid #ddd; border-radius: 6px; min-height: 65px; }
+        /* 基礎行樣式 */
+        .lineup-row { display: flex; gap: 6px; align-items: center; padding: 5px; background: rgba(255, 255, 255, 0.98); border: 1px solid #ddd; border-radius: 6px; min-height: 65px; box-sizing: border-box; }
         
-        /* 🌟 預備球員整行背景稍微透明化，讓背景圖更隱約透出 🌟 */
-        .lineup-row.reserve-row { background: rgba(255, 255, 255, 0.85); }
+        /* 先發行：保持三欄，選單滿版 */
+        .lineup-row.starter-row .player-group { flex: 1; display: flex; align-items: center; gap: 6px; }
+        .lineup-row.starter-row .player-select { flex: 1; width: 100%; }
+        .lineup-row.starter-row .pos-select { width: 120px; flex-shrink: 0; }
+
+        /* 🌟 預備行：寬度只到名字，移除守位選單空間 🌟 */
+        .lineup-row.reserve-row { background: rgba(255, 255, 255, 0.9); border: 2px solid #ccc; width: fit-content; min-width: 100%; }
+        .lineup-row.reserve-row .player-group { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; }
+        .lineup-row.reserve-row .player-select { width: auto; flex: 0 1 auto; min-width: 180px; }
 
         .order-label { font-weight: bold; font-size: 32px; width: 65px; text-align: center; color: var(--secondary-color); background: #eee; padding: 8px 0; border-radius: 4px; flex-shrink: 0; }
         .pitcher-label { background: var(--primary-color); color: white; }
         .reserve-label { background: var(--reserve-color); color: white; font-size: 26px; }
         
-        .player-group { display: flex; flex: 1; gap: 6px; align-items: center; min-width: 0; }
         .jersey-badge { width: 48px; height: 48px; background: var(--accent-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; opacity: 0; flex-shrink: 0; font-size: 28px; transition: opacity 0.3s; }
         .jersey-badge.active { opacity: 1; }
         
-        select { flex: 1; padding: 8px 5px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); outline: none; background: #fff; font-weight: bold; cursor: pointer; color: #000; min-height: 55px; }
+        select { padding: 8px 5px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); outline: none; background: #fff; font-weight: bold; cursor: pointer; color: #000; min-height: 55px; }
         
         .status-message { margin-top: 10px; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 28px; }
         .status-success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
@@ -66,179 +76,17 @@
         #share-line-btn { background: var(--line-color); display: flex; align-items: center; justify-content: center; gap: 12px; }
         #share-line-btn img { width: 38px; height: 38px; }
         
-        @media (max-width: 600px) { .boards-wrapper { flex-direction: column; gap: 15px; } button { width: 100%; font-size: 36px; } h1 { font-size: 38px; } }
+        @media (max-width: 600px) { 
+            .boards-wrapper { flex-direction: column; gap: 15px; } 
+            .column.reserve-col { width: 100%; }
+            .lineup-row.reserve-row { width: 100%; }
+            button { width: 100%; font-size: 36px; } 
+            h1 { font-size: 36px; } 
+        }
     </style>
 </head>
 <body>
 
 <div id="capture-area">
     <div class="header-container">
-        <div id="team-logo-display">
-            <img src="https://lh3.googleusercontent.com/d/1aooCsOuMMtwMhT5bay4kDQCAq9sbm3kW" alt="LOGO" crossorigin="anonymous">
-        </div>
-        <h1>🔥 攻 守 名 單 🔥</h1>
-    </div>
-    
-    <div class="game-info-container">
-        <div class="info-row">
-            <div class="info-item"><label>📅 比賽日期</label><input type="date" id="game-date"></div>
-            <div class="info-item"><label>⏰ 集合時間</label><input type="time" id="meet-time" value="08:00"></div>
-            <div class="info-item"><label>⚾ 比賽時間</label><input type="time" id="game-time" value="09:00"></div>
-        </div>
-        <div class="info-row">
-            <div class="info-item">
-                <label>🏟️ 比賽地點</label>
-                <select id="game-location"><option value="">-- 同步中 --</option></select>
-            </div>
-            <div class="info-item">
-                <label>🚩 休息區</label>
-                <select id="bench-side">
-                    <option value="">-- 二選一 --</option>
-                    <option value="一壘側">一壘側</option>
-                    <option value="三壘側">三壘側</option>
-                </select>
-            </div>
-            <div class="info-item"><label>🆚 對戰球隊</label><input type="text" id="opponent-team" placeholder="輸入對手"></div>
-        </div>
-    </div>
-    
-    <div class="boards-wrapper">
-        <div class="column">
-            <div class="section-title">⚾ 先發名單</div>
-            <div id="starters-board" class="column"></div>
-        </div>
-        <div class="column">
-            <div class="section-title" style="color:#ddd">🛡️ 預備球員</div>
-            <div id="reserves-board" class="column"></div>
-        </div>
-    </div>
-    <div id="status-box" class="status-message"></div>
-</div>
-
-<div class="button-group" id="action-buttons" style="display: none;">
-    <button id="export-btn">📸 下載圖片</button>
-    <button id="share-line-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/4/41/LINE_logo.svg" alt="LINE"> 🟢 截圖分享</button>
-</div>
-
-<script>
-    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQE8qU7MUo8mltMrnQSLttK1ePGuN2ooTaD3QBtoKsmvrW5tEKOjSXwGm9bwhZtgy2veLF-QLTpe33q/pub?output=csv";
-    let playersData = [], locations = [];
-    const posList = ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"];
-
-    async function fetchRoster() {
-        Papa.parse(GOOGLE_SHEET_URL, { download: true, header: false, complete: function(results) {
-            const data = results.data.slice(1);
-            playersData = data.map(row => ({ num: String(row[0]||""), name: String(row[1]||"") })).filter(p => p.name !== "");
-            locations = Array.from(new Set(data.map(row => String(row[2]||"").trim()))).filter(loc => loc !== "");
-            updateAllDropdowns();
-            refreshLocationDropdown();
-        }});
-    }
-
-    function refreshLocationDropdown() {
-        document.getElementById('game-location').innerHTML = '<option value="">-- 選擇球場 --</option>' + locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
-    }
-
-    function updateAllDropdowns() {
-        const allPlayerSelects = document.querySelectorAll('.player-select');
-        const allPosSelects = document.querySelectorAll('.pos-select');
-
-        const selectedPlayers = Array.from(allPlayerSelects).map(s => s.value).filter(v => v !== "");
-        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P" && v !== "Bench");
-
-        allPlayerSelects.forEach(select => {
-            const currentVal = select.value;
-            let options = `<option value="">-- 球員 --</option>`;
-            playersData.forEach(p => {
-                if (p.name === currentVal || !selectedPlayers.includes(p.name)) {
-                    options += `<option value="${p.name}" ${p.name === currentVal ? 'selected' : ''}>${p.name}</option>`;
-                }
-            });
-            select.innerHTML = options;
-        });
-
-        allPosSelects.forEach(select => {
-            if (select.classList.contains('pitcher') || select.classList.contains('reserve')) return;
-            const currentVal = select.value;
-            let options = `<option value="">-- 守位 --</option>`;
-            posList.filter(p => p !== 'P').forEach(pos => {
-                if (pos === currentVal || !selectedPositions.includes(pos)) {
-                    options += `<option value="${pos}" ${pos === currentVal ? 'selected' : ''}>${pos}</option>`;
-                }
-            });
-            select.innerHTML = options;
-        });
-        validate();
-    }
-
-    function createRow(labelText, type, container) {
-        const row = document.createElement('div'); 
-        // 🌟 如果是預備球員，多加一個 class 方便設定 🌟
-        row.className = 'lineup-row' + (type === 'reserve' ? ' reserve-row' : '');
-        row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
-        
-        const pSelect = row.querySelector('.player-select'), badge = row.querySelector('.jersey-badge'), posSelect = row.querySelector('.pos-select');
-
-        if (type === 'pitcher') { 
-            posSelect.innerHTML = '<option value="P">P</option>'; 
-            posSelect.disabled = true; 
-        } 
-        else if (type === 'reserve') { 
-            // 🌟 核心修復：徹底讓右邊方框透明化 🌟
-            posSelect.innerHTML = '<option value=""></option>'; 
-            posSelect.style.background = 'transparent';
-            posSelect.style.border = 'none';
-            posSelect.style.boxShadow = 'none';
-            posSelect.style.appearance = 'none'; // 移除下拉箭頭
-            posSelect.style.pointerEvents = 'none'; // 禁止點擊
-            posSelect.disabled = true; 
-        }
-
-        pSelect.onchange = () => {
-            const p = playersData.find(x => x.name === pSelect.value);
-            if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
-            else { badge.style.opacity = 0; }
-            updateAllDropdowns();
-        };
-        posSelect.onchange = updateAllDropdowns;
-        container.appendChild(row);
-    }
-
-    function validate() {
-        const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
-        const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
-        const allSet = Array.from(allP).slice(0, 10).every(s => s.value) && missingPos.length === 0;
-
-        if (!allSet) {
-            status.textContent = "⌛ 請選滿先發 10 人，缺: " + (missingPos.join(", "));
-            status.className = "status-message status-warning"; btnGroup.style.display = "none";
-        } else {
-            status.textContent = "✅ 攻守名單排定完成！";
-            status.className = "status-message status-success"; btnGroup.style.display = "flex";
-        }
-    }
-
-    async function handleShare() {
-        const status = document.getElementById('status-box'); status.style.display = 'none';
-        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true });
-        status.style.display = 'block';
-        canvas.toBlob(async (blob) => {
-            const file = new File([blob], 'lineup.png', { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
-            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
-        });
-    }
-
-    function init() {
-        document.getElementById('game-date').value = new Date().toISOString().split('T')[0];
-        for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', document.getElementById('starters-board'));
-        createRow('P', 'pitcher', document.getElementById('starters-board'));
-        for (let i = 1; i <= 8; i++) createRow('預', 'reserve', document.getElementById('reserves-board'));
-        fetchRoster();
-    }
-    document.getElementById('export-btn').onclick = handleShare;
-    document.getElementById('share-line-btn').onclick = handleShare;
-    init();
-</script>
-</body>
-</html>
+        <div id="team
