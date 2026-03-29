@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 專業代碼版</title>
+    <title>棒球攻守名單 - 投打二刀流版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -19,7 +19,8 @@
             width: 100%; max-width: 1000px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); 
             border-top: 6px solid var(--primary-color); box-sizing: border-box; position: relative;
             background-color: #111;
-            background-image: url('https://lh3.googleusercontent.com/d/1GDCzxfienpG_wIKKEcRLIdwmBmtt0wS-'); 
+            /* 🌟 1. 更新為剛剛上傳的新底圖 🌟 */
+            background-image: url('https://drive.google.com/uc?export=view&id=1lXlO9vWbB8N-M-uS94lU31b6M7Vn1V1Z'); 
             background-size: cover; background-position: center; background-repeat: no-repeat;
             margin-bottom: 20px;
         }
@@ -45,7 +46,6 @@
         .player-group { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; }
         .player-select { width: auto; flex: 0 1 auto; min-width: 180px; }
 
-        /* 🌟 加寬守位選單以容納數字代碼 🌟 */
         .pos-select { width: 140px; flex-shrink: 0; text-align: center; }
 
         .order-label { font-weight: bold; font-size: 32px; width: 65px; text-align: center; color: var(--secondary-color); background: #eee; padding: 8px 0; border-radius: 4px; flex-shrink: 0; }
@@ -81,7 +81,7 @@
 <div id="capture-area">
     <div class="header-container">
         <div id="team-logo-display">
-            <img src="https://lh3.googleusercontent.com/d/1aooCsOuMMtwMhT5bay4kDQCAq9sbm3kW" alt="LOGO" crossorigin="anonymous">
+            <img src="https://drive.google.com/uc?export=view&id=1aooCsOuMMtwMhT5bay4kDQCAq9sbm3kW" alt="LOGO" crossorigin="anonymous">
         </div>
         <h1>🔥 攻 守 名 單 🔥</h1>
     </div>
@@ -130,7 +130,6 @@
 <script>
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQE8qU7MUo8mltMrnQSLttK1ePGuN2ooTaD3QBtoKsmvrW5tEKOjSXwGm9bwhZtgy2veLF-QLTpe33q/pub?output=csv";
     let playersData = [], locations = [];
-    // 🌟 更新守備位置清單，加入紀錄代碼 🌟
     const posList = ["P(1)", "C(2)", "1B(3)", "2B(4)", "3B(5)", "SS(6)", "LF(7)", "CF(8)", "RF(9)", "DH"];
 
     async function fetchRoster() {
@@ -138,8 +137,10 @@
             const data = results.data.slice(1);
             playersData = data.map(row => ({ num: String(row[0]||""), name: String(row[1]||"") })).filter(p => p.name !== "");
             locations = Array.from(new Set(data.map(row => String(row[2]||"").trim()))).filter(loc => loc !== "");
-            updateAllDropdowns();
+            // 🌟 2. 獲取資料後，直接生成選單，不進行球員過濾 🌟
+            initializePlayerDropdowns();
             refreshLocationDropdown();
+            validate();
         }});
     }
 
@@ -147,30 +148,31 @@
         document.getElementById('game-location').innerHTML = '<option value="">-- 選擇球場 --</option>' + locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
     }
 
-    function updateAllDropdowns() {
+    // 🌟 3. 新增：初始化所有球員選單，顯示完整名單 🌟
+    function initializePlayerDropdowns() {
         const allPlayerSelects = document.querySelectorAll('.player-select');
-        const allPosSelects = document.querySelectorAll('.pos-select');
-
-        const selectedPlayers = Array.from(allPlayerSelects).map(s => s.value).filter(v => v !== "");
-        // 排除 P(1) 的過濾邏輯，因為 P 通常與打線分開處理，但也保留過濾其餘位置
-        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P(1)" && v !== "Bench");
-
+        let options = `<option value="">-- 球員 --</option>`;
+        playersData.forEach(p => {
+            options += `<option value="${p.name}">${p.name}</option>`;
+        });
+        
         allPlayerSelects.forEach(select => {
             const currentVal = select.value;
-            let options = `<option value="">-- 球員 --</option>`;
-            playersData.forEach(p => {
-                if (p.name === currentVal || !selectedPlayers.includes(p.name)) {
-                    options += `<option value="${p.name}" ${p.name === currentVal ? 'selected' : ''}>${p.name}</option>`;
-                }
-            });
             select.innerHTML = options;
+            if (currentVal) select.value = currentVal; // 保留原本選取的球員
         });
+    }
+
+    // 🌟 4. 修改：守位過濾保持，但移除球員過濾 🌟
+    function updatePosDropdowns() {
+        const allPosSelects = document.querySelectorAll('.pos-select');
+        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P(1)" && v !== "Bench");
 
         allPosSelects.forEach(select => {
             if (select.classList.contains('pitcher') || select.classList.contains('reserve')) return;
             const currentVal = select.value;
             let options = `<option value="">-- 守位 --</option>`;
-            // 排除 P(1) 以防重複選取（先發打線通常不含 P(1) 除非是 DH 制或投打併列）
+            
             posList.filter(p => p !== 'P(1)').forEach(pos => {
                 if (pos === currentVal || !selectedPositions.includes(pos)) {
                     options += `<option value="${pos}" ${pos === currentVal ? 'selected' : ''}>${pos}</option>`;
@@ -196,13 +198,16 @@
             row.removeChild(posSelect); 
         }
 
+        // 🌟 5. 修改：球員變更時，只同步背號，不再重新過濾球員名單 🌟
         pSelect.onchange = () => {
             const p = playersData.find(x => x.name === pSelect.value);
             if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
             else { badge.style.opacity = 0; }
-            updateAllDropdowns();
+            validate();
         };
-        if (type !== 'reserve') { posSelect.onchange = updateAllDropdowns; }
+        
+        // 🌟 6. 修改：守位變更時，觸發守位過濾 🌟
+        if (type !== 'reserve') { posSelect.onchange = updatePosDropdowns; }
         
         container.appendChild(row);
     }
@@ -210,10 +215,14 @@
     function validate() {
         const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
         const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
-        const allSet = Array.from(allP).slice(0, 10).every(s => s.value) && missingPos.length === 0;
-
-        if (!allSet) {
-            status.textContent = "⌛ 請選滿先發 10 人，缺: " + (missingPos.join(", "));
+        // 先發打線 9 人 + 投手 1 人 = 10 人 (容許 DH 與 P 同一人，但需選滿位置)
+        const starterCount = Array.from(allP).slice(0, 10).filter(s => s.value).length;
+        
+        if (starterCount < 10) {
+            status.textContent = "⌛ 請選滿先發 10 人 (含 P)，缺: " + starterCount + "/10";
+            status.className = "status-message status-warning"; btnGroup.style.display = "none";
+        } else if (missingPos.length > 0) {
+            status.textContent = "⌛ 請填滿所有守備位置，缺: " + (missingPos.join(", "));
             status.className = "status-message status-warning"; btnGroup.style.display = "none";
         } else {
             status.textContent = "✅ 攻守名單排定完成！";
