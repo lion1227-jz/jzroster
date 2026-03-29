@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 暴力圖層修復版</title>
+    <title>棒球攻守名單 - 最初純淨版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -32,6 +32,7 @@
         .info-item select option { color: #000; background: #fff; text-shadow: none; }
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
+        /* 回歸最初的單純排版，沒有任何圖層干擾 */
         .boards-wrapper { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start; justify-content: center; width: 100%; }
         .column { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 320px; }
         
@@ -41,22 +42,7 @@
             display: flex; gap: 8px; align-items: center; padding: 6px; 
             background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 6px; 
             width: 100%; box-sizing: border-box; 
-            position: relative; /* 🌟 建立定位點 🌟 */
         }
-
-        /* 🌟 終極暴力解法：直接寫死每一行的階級，數字越大越在上層，絕對壓制下一行 🌟 */
-        .lineup-row:nth-child(1) { z-index: 50; }
-        .lineup-row:nth-child(2) { z-index: 49; }
-        .lineup-row:nth-child(3) { z-index: 48; }
-        .lineup-row:nth-child(4) { z-index: 47; }
-        .lineup-row:nth-child(5) { z-index: 46; }
-        .lineup-row:nth-child(6) { z-index: 45; }
-        .lineup-row:nth-child(7) { z-index: 44; }
-        .lineup-row:nth-child(8) { z-index: 43; }
-        .lineup-row:nth-child(9) { z-index: 42; }
-        .lineup-row:nth-child(10) { z-index: 41; }
-        .lineup-row:nth-child(11) { z-index: 40; }
-        .lineup-row:nth-child(12) { z-index: 39; }
 
         .player-group { flex: 1; display: flex; align-items: center; gap: 8px; }
         .player-select { flex: 1; width: 100%; }
@@ -191,59 +177,4 @@
         const row = document.createElement('div'); 
         row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
         
-        row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
-        const pSelect = row.querySelector('.player-select'), badge = row.querySelector('.jersey-badge'), posSelect = row.querySelector('.pos-select');
-        
-        if (type === 'pitcher') { posSelect.innerHTML = '<option value="P(1)">P(1)</option>'; posSelect.disabled = true; } 
-        else if (type === 'reserve') { row.removeChild(posSelect); }
-        
-        pSelect.onchange = () => {
-            const p = playersData.find(x => x.name === pSelect.value);
-            if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
-            else { badge.style.opacity = 0; }
-            validate();
-        };
-        if (type !== 'reserve') { posSelect.onchange = updatePosDropdowns; }
-        container.appendChild(row);
-    }
-
-    function validate() {
-        const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
-        const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
-        const starterCount = Array.from(allP).slice(0, 10).filter(s => s.value).length;
-        if (starterCount < 10) {
-            status.textContent = "⌛ 請選滿先發 10 人，目前: " + starterCount + "/10";
-            status.className = "status-message status-warning"; btnGroup.style.display = "none";
-        } else if (missingPos.length > 0) {
-            status.textContent = "⌛ 請填滿守備位置，缺: " + (missingPos.join(", "));
-            status.className = "status-message status-warning"; btnGroup.style.display = "none";
-        } else {
-            status.textContent = "✅ 名單排定完成！";
-            status.className = "status-message status-success"; btnGroup.style.display = "flex";
-        }
-    }
-
-    async function handleShare() {
-        const status = document.getElementById('status-box'); status.style.display = 'none';
-        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true, allowTaint: false });
-        status.style.display = 'block';
-        canvas.toBlob(async (blob) => {
-            const file = new File([blob], 'lineup.png', { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
-            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
-        });
-    }
-
-    function init() {
-        document.getElementById('game-date').value = new Date().toISOString().split('T')[0];
-        for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', document.getElementById('starters-board'));
-        createRow('P', 'pitcher', document.getElementById('starters-board'));
-        for (let i = 1; i <= 8; i++) createRow('預', 'reserve', document.getElementById('reserves-board'));
-        fetchRoster();
-    }
-    document.getElementById('export-btn').onclick = handleShare;
-    document.getElementById('share-line-btn').onclick = handleShare;
-    init();
-</script>
-</body>
-</html>
+        row.innerHTML = `<div class="order-label ${type === 'pitcher' ?
