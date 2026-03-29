@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 穩定終極版</title>
+    <title>棒球攻守名單 - 表頭縮小版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -12,28 +12,32 @@
             --bg-color: #f4f4f9; --light-purple: #D1C4E9; 
             --target-font-size: 30px;
         }
-        body { font-family: 'Helvetica Neue', Arial, '微軟正黑體', sans-serif; background: var(--bg-color); margin: 0; padding: 20px 5px; color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        body { font-family: 'Helvetica Neue', Arial, '微軟正黑體', sans-serif; background: var(--bg-color); margin: 0; padding: 20px 5px; color: #333; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
         
         #capture-area { 
             width: 100%; max-width: 1100px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); 
             border-top: 6px solid var(--primary-color); box-sizing: border-box; 
             background-color: #2e1a47; 
-            /* 🌟 1. 背景圖：使用 Google 隱藏版直連 API lh3 🌟 */
+            /* 🌟 背景圖：真實 ID + lh3 超穩定直連 🌟 */
             background-image: url('https://lh3.googleusercontent.com/d/1lXlO9vWbB8N-M-uS94lU31b6M7Vn1V1Z'); 
             background-size: cover; background-position: center; background-repeat: no-repeat;
             margin-bottom: 20px;
+            position: relative;
         }
         
-        .header-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; padding: 10px 0; background: rgba(0, 0, 0, 0.4); border-radius: 8px; backdrop-filter: blur(5px); }
+        /* 🌟 表頭瘦身：縮小間距與 Padding 🌟 */
+        .header-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; padding: 5px 0; background: rgba(0, 0, 0, 0.4); border-radius: 8px; backdrop-filter: blur(5px); }
         
+        /* 🌟 Logo 瘦身：90px -> 65px 🌟 */
         #team-logo-display { 
-            width: 90px; height: 90px; border-radius: 50%; background: #fff; overflow: hidden; 
+            width: 65px; height: 65px; border-radius: 50%; background: #fff; overflow: hidden; 
             display: flex; align-items: center; justify-content: center; 
-            border: 4px solid var(--light-purple); flex-shrink: 0;
+            border: 3px solid var(--light-purple); flex-shrink: 0;
         }
         #team-logo-display img { width: 100%; height: 100%; object-fit: contain; }
 
-        h1 { text-align: center; color: #fff; margin: 0; font-size: 48px; font-weight: 900; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        /* 🌟 標題瘦身：48px -> 36px 🌟 */
+        h1 { text-align: center; color: #fff; margin: 0; font-size: 36px; font-weight: 900; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
         .game-info-container { background: transparent; border: none; padding: 5px 0; margin-bottom: 20px; display: flex; flex-direction: column; }
         .info-row { display: flex; gap: 20px; flex-wrap: wrap; }
@@ -48,17 +52,23 @@
             gap: 20px; 
             width: 100%; 
             box-sizing: border-box;
+            overflow: visible !important;
         }
         
-        /* 🌟 拉開列與列之間的距離，讓選單更自在 🌟 */
-        .column { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .column { display: flex; flex-direction: column; gap: 10px; width: 100%; overflow: visible !important; }
         .section-title { text-align: center; color: #fff; margin: 0 0 5px 0; border-bottom: 3px solid var(--light-purple); padding-bottom: 5px; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* 🌟 2. 徹底移除所有的 position: relative 和 z-index 🌟 */
         .lineup-row { 
             display: flex; gap: 8px; align-items: center; padding: 8px 5px; 
             background: rgba(255, 255, 255, 0.95); border: 1px solid #ddd; border-radius: 6px; 
             width: 100%; box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+        }
+
+        .lineup-row:hover, 
+        .lineup-row:focus-within {
+            z-index: 9999 !important;
         }
 
         .player-group { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -72,7 +82,6 @@
         .jersey-badge { width: 48px; height: 48px; background: var(--accent-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; opacity: 0; flex-shrink: 0; font-size: 28px; }
         .jersey-badge.active { opacity: 1; }
         
-        /* 確保選單背景為白色且無特殊層級干擾 */
         select { padding: 8px 5px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); font-weight: bold; cursor: pointer; color: #000; min-height: 55px; background-color: #fff; }
         
         .status-message { margin-top: 15px; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 28px; }
@@ -191,7 +200,6 @@
         validate();
     }
 
-    // 🌟 移除多餘的 index 參數與 inline style 🌟
     function createRow(labelText, type, container) {
         const row = document.createElement('div'); 
         row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
