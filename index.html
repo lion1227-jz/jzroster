@@ -169,4 +169,82 @@
         playersData.forEach(p => { options += `<option value="${p.name}">${p.name}</option>`; });
         allPlayerSelects.forEach(select => {
             const currentVal = select.value;
-            select.innerHTML =
+            select.innerHTML = options;
+            if (currentVal) select.value = currentVal;
+        });
+    }
+
+    function updatePosDropdowns() {
+        const allPosSelects = document.querySelectorAll('.pos-select');
+        const selectedPositions = Array.from(allPosSelects).map(s => s.value).filter(v => v !== "" && v !== "P(1)" && v !== "Bench");
+        allPosSelects.forEach(select => {
+            if (select.classList.contains('pitcher') || select.classList.contains('reserve')) return;
+            const currentVal = select.value;
+            let options = `<option value="">-- 守位 --</option>`;
+            posList.filter(p => p !== 'P(1)').forEach(pos => {
+                if (pos === currentVal || !selectedPositions.includes(pos)) {
+                    options += `<option value="${pos}" ${pos === currentVal ? 'selected' : ''}>${pos}</option>`;
+                }
+            });
+            select.innerHTML = options;
+        });
+        validate();
+    }
+
+    function createRow(labelText, type, container) {
+        const row = document.createElement('div'); 
+        row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
+        row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
+        const pSelect = row.querySelector('.player-select'), badge = row.querySelector('.jersey-badge'), posSelect = row.querySelector('.pos-select');
+        if (type === 'pitcher') { posSelect.innerHTML = '<option value="P(1)">P(1)</option>'; posSelect.disabled = true; } 
+        else if (type === 'reserve') { row.removeChild(posSelect); }
+        pSelect.onchange = () => {
+            const p = playersData.find(x => x.name === pSelect.value);
+            if (p && p.num) { badge.textContent = p.num; badge.classList.add('active'); badge.style.opacity = 1; } 
+            else { badge.style.opacity = 0; }
+            validate();
+        };
+        if (type !== 'reserve') { posSelect.onchange = updatePosDropdowns; }
+        container.appendChild(row);
+    }
+
+    function validate() {
+        const allP = document.querySelectorAll('.player-select'), startPos = document.querySelectorAll('.pos-select.starter, .pos-select.pitcher'), status = document.getElementById('status-box'), btnGroup = document.getElementById('action-buttons');
+        const missingPos = posList.filter(p => !Array.from(startPos).some(s => s.value === p));
+        const starterCount = Array.from(allP).slice(0, 10).filter(s => s.value).length;
+        if (starterCount < 10) {
+            status.textContent = "⌛ 請選滿先發 10 人 (含 P)，目前: " + starterCount + "/10";
+            status.className = "status-message status-warning"; btnGroup.style.display = "none";
+        } else if (missingPos.length > 0) {
+            status.textContent = "⌛ 請填滿守備位置，缺: " + (missingPos.join(", "));
+            status.className = "status-message status-warning"; btnGroup.style.display = "none";
+        } else {
+            status.textContent = "✅ 名單排定完成！";
+            status.className = "status-message status-success"; btnGroup.style.display = "flex";
+        }
+    }
+
+    async function handleShare() {
+        const status = document.getElementById('status-box'); status.style.display = 'none';
+        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true, allowTaint: false });
+        status.style.display = 'block';
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], 'lineup.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
+            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
+        });
+    }
+
+    function init() {
+        document.getElementById('game-date').value = new Date().toISOString().split('T')[0];
+        for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', document.getElementById('starters-board'));
+        createRow('P', 'pitcher', document.getElementById('starters-board'));
+        for (let i = 1; i <= 8; i++) createRow('預', 'reserve', document.getElementById('reserves-board'));
+        fetchRoster();
+    }
+    document.getElementById('export-btn').onclick = handleShare;
+    document.getElementById('share-line-btn').onclick = handleShare;
+    init();
+</script>
+</body>
+</html>
