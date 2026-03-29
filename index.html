@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 最終穩定版</title>
+    <title>棒球攻守名單 - 最終穩定排版版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
-        /* 基礎設定，絕對不使用 overflow 隱藏任何東西 */
-        body { font-family: '微軟正黑體', sans-serif; background: #222; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        /* 🌟 補回 flex-direction: column，讓按鈕乖乖排在下方 🌟 */
+        body { font-family: '微軟正黑體', sans-serif; background: #222; margin: 0; padding: 20px 5px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
         #capture-area {
             width: 100%; max-width: 1100px; padding: 20px; border-radius: 12px;
             background-color: #2e1a47; 
             background-size: cover; background-position: center; background-repeat: no-repeat;
-            /* 故意在底部留超大空間，保證最後一行的下拉選單有地方伸展 */
-            padding-bottom: 150px; 
+            padding-bottom: 100px; /* 留空間給最後一行的下拉選單 */
             border-top: 6px solid #673AB7; box-sizing: border-box;
         }
 
@@ -26,19 +25,18 @@
         .info-bar { display: flex; flex-wrap: wrap; gap: 15px; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
         .info-item { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 250px; border-bottom: 1px solid #D1C4E9; padding-bottom: 5px; }
         .info-item label { color: #fff; font-size: 24px; font-weight: bold; white-space: nowrap; }
-        .info-item input, .info-item select { font-size: 26px; padding: 5px; border-radius: 5px; border: none; background: transparent; color: #fff; font-weight: bold; flex: 1; outline: none; }
+        .info-item input, .info-item select { font-size: 26px; padding: 5px; border-radius: 5px; border: none; background: transparent; color: #fff; font-weight: bold; flex: 1; outline: none; cursor: pointer; }
         .info-item select option { color: #000; background: #fff; }
         input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
-        /* 這裡把上一版誤刪的「排版地基」補回來了，名單不會再消失！ */
-        .boards-container { display: flex; gap: 20px; flex-wrap: wrap; }
-        .board-column { flex: 1; min-width: 350px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .boards-container { display: flex; gap: 20px; flex-wrap: wrap; width: 100%; }
+        .board-column { flex: 1; min-width: 320px; background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
         .board-title { color: #fff; font-size: 32px; text-align: center; border-bottom: 2px solid #D1C4E9; padding-bottom: 10px; margin: 0 0 10px 0; font-weight: bold; }
 
-        /* 乾淨俐落的名單列，無圖層干擾 */
+        /* 乾淨俐落的名單列，半透明背景讓底圖透出 */
         .lineup-row {
             display: flex; align-items: center; gap: 10px; 
-            background: rgba(255, 255, 255, 0.75); /* 白色半透明背景，字體清楚且透光 */
+            background: rgba(255, 255, 255, 0.75); 
             padding: 8px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.2);
         }
         .order-label { background: #673AB7; color: #fff; font-size: 28px; font-weight: bold; padding: 5px 0; border-radius: 5px; width: 70px; text-align: center; flex-shrink: 0; }
@@ -54,7 +52,7 @@
         .player-select { flex: 1; min-width: 150px; }
         .pos-select { width: 140px; flex-shrink: 0; text-align: center; }
 
-        .btn-group { display: flex; justify-content: center; gap: 20px; margin-top: 30px; width: 100%; }
+        .btn-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; width: 100%; max-width: 1100px; }
         button { font-size: 28px; padding: 15px 30px; font-weight: bold; color: #fff; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         #export-btn { background: #444; }
         #share-line-btn { background: #06C755; display: flex; align-items: center; gap: 10px; }
@@ -110,8 +108,10 @@
 </div>
 
 <script>
-    // 🌟 載入圖片 (含調暗25%濾鏡) 🌟
-    const imgBase = "https://lh3.googleusercontent.com/d/";
+    // 🌟 載入圖片 (含調暗25%濾鏡，確保網址正確組合) 🌟
+    const part1 = "https://lh3.google";
+    const part2 = "usercontent.com/d/";
+    const imgBase = part1 + part2;
     const bgID = "1vNdTLpYSVeh6FwwGmErapoPO_NEDIg56"; 
     const logoID = "1aooCsOuMMtwMhT5bay4kDQCAq9sbm3kW"; 
     
@@ -147,10 +147,9 @@
             posSelect.innerHTML = '<option value="P(1)">P(1)</option>';
             posSelect.disabled = true;
         } else if (type === 'reserve') {
-            posSelect.style.visibility = 'hidden'; // 保留空間但不顯示，維持排版整齊
+            posSelect.style.visibility = 'hidden'; 
         }
 
-        // 選球員連動背號
         pSelect.addEventListener('change', () => {
             const p = playersData.find(x => x.name === pSelect.value);
             if (p && p.num) {
@@ -160,17 +159,12 @@
                 badge.textContent = '';
                 badge.classList.remove('active');
             }
-            validateForm();
         });
-
-        if (type !== 'reserve') {
-            posSelect.addEventListener('change', validateForm);
-        }
 
         container.appendChild(row);
     }
 
-    // 初始化所有格子
+    // 初始化格子
     for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', startersBoard);
     createRow('P', 'pitcher', startersBoard);
     for (let i = 1; i <= 8; i++) createRow('預', 'reserve', reservesBoard);
@@ -206,14 +200,8 @@
                     select.appendChild(opt);
                 });
             });
-            validateForm();
         }
     });
-
-    // 🌟 驗證邏輯 🌟
-    function validateForm() {
-        // (省略防呆提示，讓使用者自由選擇)
-    }
 
     // 截圖邏輯
     async function handleShare() {
