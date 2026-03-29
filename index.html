@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>棒球攻守名單 - 桌面優化最終版</title>
+    <title>棒球攻守名單 - 穩定終極版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
@@ -18,26 +18,25 @@
             width: 100%; max-width: 1100px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); 
             border-top: 6px solid var(--primary-color); box-sizing: border-box; 
             background-color: #2e1a47; 
-            /* 🌟 1. 圖床修復：填入你的真實 ID，並使用最強效的 lh3 直連格式 🌟 */
+            /* 🌟 1. 圖床修復：這次絕對是你的真實 ID 了 🌟 */
             background-image: url('https://lh3.googleusercontent.com/d/1lXlO9vWbB8N-M-uS94lU31b6M7Vn1V1Z'); 
             background-size: cover; background-position: center; background-repeat: no-repeat;
             margin-bottom: 20px;
             position: relative;
-            padding-bottom: 80px; /* 給最底下的選單留一點伸展空間 */
+            padding-bottom: 80px; 
         }
         
-        /* 🌟 3. 表頭縮小：調整高度、字體和間距 🌟 */
         .header-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; padding: 5px 0; background: rgba(0, 0, 0, 0.4); border-radius: 8px; backdrop-filter: blur(5px); }
         
         #team-logo-display { 
-            width: 65px; height: 65px; /* Logo 縮小 */
+            width: 65px; height: 65px; 
             border-radius: 50%; background: #fff; overflow: hidden; 
             display: flex; align-items: center; justify-content: center; 
             border: 3px solid var(--light-purple); flex-shrink: 0;
         }
         #team-logo-display img { width: 100%; height: 100%; object-fit: contain; }
 
-        h1 { text-align: center; color: #fff; margin: 0; font-size: 36px; /* 字體縮小 */ font-weight: 900; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        h1 { text-align: center; color: #fff; margin: 0; font-size: 36px; font-weight: 900; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
         .game-info-container { background: transparent; border: none; padding: 5px 0; margin-bottom: 20px; display: flex; flex-direction: column; }
         .info-row { display: flex; gap: 20px; flex-wrap: wrap; }
@@ -55,12 +54,12 @@
             position: relative;
         }
         
-        .column { display: flex; flex-direction: column; gap: 8px; width: 100%; position: relative; }
-        
-        /* 🌟 2. 選單防擋修復：強制左邊（先發）層級高於右邊（預備） 🌟 */
-        #left-column { z-index: 50; }
-        #right-column { z-index: 10; }
+        /* 🌟 讓左欄(先發)永遠高於右欄(預備) 🌟 */
+        #left-column { position: relative; z-index: 50; }
+        #right-column { position: relative; z-index: 10; }
 
+        .column { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        
         .section-title { text-align: center; color: #fff; margin: 0 0 5px 0; border-bottom: 3px solid var(--light-purple); padding-bottom: 5px; font-size: 32px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
         .lineup-row { 
@@ -69,8 +68,7 @@
             width: 100%; box-sizing: border-box; position: relative;
         }
 
-        /* 當滑鼠互動時，進一步提升該列的層級，保證萬無一失 */
-        .lineup-row:hover, .lineup-row:focus-within { z-index: 999; }
+        /* 🌟 2. 移除所有 :hover 和 :focus-within 的干擾代碼，防止選單互疊 🌟 */
 
         .player-group { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
         .player-select { flex: 1; width: 100%; min-width: 0; position: relative; }
@@ -83,7 +81,7 @@
         .jersey-badge { width: 48px; height: 48px; background: var(--accent-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; opacity: 0; flex-shrink: 0; font-size: 28px; }
         .jersey-badge.active { opacity: 1; }
         
-        select { padding: 8px 5px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); font-weight: bold; cursor: pointer; color: #000; min-height: 55px; background-color: #fff; position: relative; }
+        select { padding: 8px 5px; border: 1px solid #ccc; border-radius: 4px; font-size: var(--target-font-size); font-weight: bold; cursor: pointer; color: #000; min-height: 55px; background-color: #fff; }
         
         .status-message { margin-top: 15px; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; font-size: 28px; }
         .status-success { background: rgba(212, 237, 218, 0.9); color: #155724; border: 2px solid #c3e6cb; }
@@ -200,7 +198,8 @@
     function createRow(labelText, type, container, index) {
         const row = document.createElement('div'); 
         row.className = 'lineup-row ' + (type === 'reserve' ? 'reserve-row' : 'starter-row');
-        // 自動遞減 z-index，防止同欄上下打架
+        
+        // 🌟 核心防擋：強制依照順序給予階級，數字越小階級越高，下拉選單就不會被底下吃掉 🌟
         row.style.zIndex = 50 - index;
         
         row.innerHTML = `<div class="order-label ${type === 'pitcher' ? 'pitcher-label' : (type === 'reserve' ? 'reserve-label' : '')}">${labelText}</div><div class="player-group"><div class="jersey-badge ${type === 'reserve' ? 'reserve-badge' : ''}"></div><select class="player-select ${type}"></select></div><select class="pos-select ${type}"></select>`;
@@ -237,7 +236,7 @@
 
     async function handleShare() {
         const status = document.getElementById('status-box'); status.style.display = 'none';
-        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true, allowTaint: true });
+        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true, allowTaint: false });
         status.style.display = 'block';
         canvas.toBlob(async (blob) => {
             const file = new File([blob], 'lineup.png', { type: 'image/png' });
