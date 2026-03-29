@@ -165,3 +165,99 @@
         const row = document.createElement('div');
         // 🌟 區分先發與預備，套用不同寬度 🌟
         row.className = type === 'reserve' ? 'lineup-row reserve-row' : 'lineup-row starter-row';
+        const labelClass = type === 'reserve' ? 'order-label reserve-label' : 'order-label';
+
+        row.innerHTML = `
+            <div class="${labelClass}">${labelText}</div>
+            <div class="jersey-badge"></div>
+            <select class="player-select"><option value="">-- 球員 --</option></select>
+            <select class="pos-select"><option value="">-- 守位 --</option></select>
+        `;
+
+        const pSelect = row.querySelector('.player-select');
+        const badge = row.querySelector('.jersey-badge');
+        const posSelect = row.querySelector('.pos-select');
+
+        if (type === 'pitcher') {
+            posSelect.innerHTML = '<option value="P(1)">P(1)</option>';
+            posSelect.disabled = true;
+        } else if (type === 'reserve') {
+            posSelect.style.display = 'none'; // 預備球員徹底隱藏守位選單
+        }
+
+        // 每次選擇都觸發防呆檢查
+        pSelect.addEventListener('change', () => {
+            const p = playersData.find(x => x.name === pSelect.value);
+            if (p && p.num) {
+                badge.textContent = p.num;
+                badge.classList.add('active');
+            } else {
+                badge.textContent = '';
+                badge.classList.remove('active');
+            }
+            validateForm(); // 觸發紅字檢查
+        });
+
+        if (type !== 'reserve') {
+            posSelect.addEventListener('change', validateForm); // 觸發紅字檢查
+        }
+
+        container.appendChild(row);
+    }
+
+    for (let i = 1; i <= 9; i++) createRow(i + ' 棒', 'starter', startersBoard);
+    createRow('P', 'pitcher', startersBoard);
+    for (let i = 1; i <= 8; i++) createRow('預', 'reserve', reservesBoard);
+
+    Papa.parse(GOOGLE_SHEET_URL, {
+        download: true,
+        header: false,
+        complete: function(results) {
+            const data = results.data.slice(1);
+            playersData = data.map(row => ({ num: String(row[0]||"").trim(), name: String(row[1]||"").trim() })).filter(p => p.name !== "");
+            locations = Array.from(new Set(data.map(row => String(row[2]||"").trim()))).filter(loc => loc !== "");
+
+            const locSelect = document.getElementById('game-location');
+            locSelect.innerHTML = '<option value="">-- 選擇球場 --</option>' + locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+
+            document.querySelectorAll('.player-select').forEach(select => {
+                playersData.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name; opt.textContent = p.name;
+                    select.appendChild(opt);
+                });
+            });
+
+            document.querySelectorAll('.pos-select').forEach(select => {
+                if (select.disabled || select.style.display === 'none') return;
+                posList.forEach(pos => {
+                    const opt = document.createElement('option');
+                    opt.value = pos; opt.textContent = pos;
+                    select.appendChild(opt);
+                });
+            });
+        }
+    });
+
+    async function handleShare() {
+        const btnGroup = document.querySelector('.btn-group');
+        // 🌟 截圖前：把按鈕隱藏，這樣就不會入鏡 🌟
+        btnGroup.style.display = 'none'; 
+        
+        const canvas = await html2canvas(document.getElementById('capture-area'), { scale: 2, useCORS: true });
+        
+        // 🌟 截圖後：把按鈕顯示回來 🌟
+        btnGroup.style.display = 'flex'; 
+
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], 'lineup.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file] });
+            else { const link = document.createElement('a'); link.download = 'lineup.png'; link.href = URL.createObjectURL(blob); link.click(); }
+        });
+    }
+
+    document.getElementById('export-btn').onclick = handleShare;
+    document.getElementById('share-line-btn').onclick = handleShare;
+</script>
+</body>
+</html>
